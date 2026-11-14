@@ -40,6 +40,18 @@ class PinHandle
       return analogRead(static_cast<uint8_t>(pin_));
     }
 
+    void writeDigital(bool value)
+    {
+      if (hasPin_ == false)
+        return;
+      digitalWrite(static_cast<uint8_t>(pin_), value ? HIGH : LOW);
+    }
+
+    bool hasPin() const
+    {
+      return hasPin_;
+    }
+
   private:
     PinAddress pin_;
     PinMode mode_;

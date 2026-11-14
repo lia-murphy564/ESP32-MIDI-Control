@@ -4,8 +4,7 @@
 #include "MIDIOut.h"
 #include <algorithm>
 #include <Wire.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
+#include "Display.h"
 
 namespace PeripheralHandle
 {
@@ -30,16 +29,13 @@ public:
 
 private:
   PeripheralID id_;
-  // PinHandle a_;
-  // PinHandle b_;
-  // PinHandle c_;
 };
 
 class Button : public PeripheralBase
 {
 public:
-  // explicit Button(PinAddress pin) : pin_(pin, PinMode::InputPullup) {}
   explicit Button(PeripheralID id, PinAddress pin) : PeripheralBase(id), pin_(pin, PinMode::InputPullup) {}
+  explicit Button(PeripheralID id) : PeripheralBase(id) {}
 
   void setup() override
   {
@@ -49,7 +45,14 @@ public:
   void update() override
   {
     // TODO: debounce
-    value_ = pin_.readDigital();
+
+    if (!pin_.hasPin()) return;
+    updateInternalData(pin_.readDigital());
+  }
+
+  void updateInternalData(auto val)
+  {
+    value_ = val;  
   }
 
   int getValue() const
@@ -67,7 +70,6 @@ public:
     midiOut.controlChange(1, 20, midiValue);
   }
   
-
 private:
   PinHandle pin_;
   int value_ = LOW;
@@ -195,7 +197,7 @@ public:
 
     display_.setTextSize(1);          // 6x8 px per char -> 4 lines of 21 chars
     display_.setCursor(0, 0);
-    display_.println("L1A");
+    display_.println("L1A - DEBUG");
 
     display_.setTextSize(2);          // 12x16 px -> 2 lines of 10 chars
     display_.setCursor(0, 12);
@@ -206,10 +208,36 @@ public:
 
   void update() override
   {
-    return;
+    if (!stale_)
+      return;
+
+    updateDisplay();
+    stale_ = false;
+  }
+
+  void setDisplay(DisplayData &data)
+  {
+    data_ = &data;
+    stale_ = true;
+    
+    // if (val.get() == data_.get())
+    //   return;
+    // data_ = val;
+    // stale_ = true;
   }
 
 private:
+  void updateDisplay()
+  {
+    display_.clearDisplay();
+
+    if (data_)
+      data_->draw(display_);
+
+    display_.display();
+
+  }
+
   TwoWire &bus_;
   uint8_t address_;
   Adafruit_SSD1306 display_;
@@ -217,6 +245,9 @@ private:
   static constexpr uint8_t width_ = 128;
   static constexpr uint8_t height_ = 32;
   static constexpr int8_t resetPin_ = -1;
+
+  DisplayData *data_ = nullptr;
+  bool stale_ = false;
 };
 
 } // namespace PeripheralHandle
