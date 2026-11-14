@@ -8,6 +8,8 @@
 #include "Multiplexor.h"
 #include "bitmap.h"
 
+// NOTE: implementation is inside .h files for easy prototype development. I know i knowwww but this compiles and works. Todo: Move implementation to .cpp and release this library :)
+
 MIDIController controller;
 MIDIOut midiOut;
 
@@ -20,8 +22,6 @@ PeripheralHandle::Oled_SSD1306 myDisplay("oled");
 // ComLink_ESPNow comLinkModule(ComRole::Module);
 // ComLink_ESPNow comLinkHub(ComRole::Hub);
 // bool bHub = true;
-
-// BitmapDisplay bitmapDisplay(bmpSmile);
 
 DisplayData *displayData = new DisplayData;
 
@@ -82,6 +82,7 @@ void loop() {
 
   mux.update();
 
+  // Todo: bitmask update to eliminate loop
   for (uint8_t i = 0; i < 16; i++)
     {
         int v = buttons[i].getValue();
