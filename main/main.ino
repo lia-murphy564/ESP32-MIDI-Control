@@ -162,7 +162,7 @@ void loop() {
     if (myButton.changed()) 
     {
       comLinkModule.send(MSG_CONTROL, CTL_BTN1, buttonState);
-      ledYellow.toggle();
+      ledYellow.set(buttonState);
     }
 
     if (myPot.changed())

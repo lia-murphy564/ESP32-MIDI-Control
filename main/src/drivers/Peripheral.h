@@ -74,8 +74,8 @@ public:
     if (!debouncer_.debounce(val == LOW)) return;
 
     if (true)
-      value_ = debouncer_.stable;
-    else if (debouncer_.stable)
+      value_ = !debouncer_.stable;
+    else if (!debouncer_.stable)
       value_ = !value_; 
   }
 
