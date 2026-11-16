@@ -56,16 +56,16 @@ private:
   }
 };
 
-class MIDIController : private RegistryBase<PeripheralHandle::PeripheralBase>
+class MIDIController : private RegistryBase<Peripheral::PeripheralBase>
 {
 public:
   // Todo: duplicate checking
-  void addControl(PeripheralHandle::PeripheralBase &control)
+  void addControl(Peripheral::PeripheralBase &control)
   {
     return add(&control);
   }
 
-  void removeControl(PeripheralHandle::PeripheralBase &control)
+  void removeControl(Peripheral::PeripheralBase &control)
   {
     return remove(&control);
   }
@@ -92,7 +92,7 @@ public:
   void sendMidi()
   {
     if (!midiOut_) return;
-    forEach([this](PeripheralHandle::PeripheralBase &c)
+    forEach([this](Peripheral::PeripheralBase &c)
     {
       c.send(*midiOut_);
     });
@@ -100,12 +100,12 @@ public:
 
   void setup()
   {
-    forEach([](PeripheralHandle::PeripheralBase &c) { c.setup(); });
+    forEach([](Peripheral::PeripheralBase &c) { c.setup(); });
   }
 
   void update()
   {
-    forEach([](PeripheralHandle::PeripheralBase &c) { c.update(); });
+    forEach([](Peripheral::PeripheralBase &c) { c.update(); });
   }
 
 private:

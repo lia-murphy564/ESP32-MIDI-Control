@@ -7,25 +7,34 @@
 #include "Communication.h"
 #include "Multiplexor.h"
 #include "bitmap.h"
+#include "LMUtil.h"
+#include "LMThread.h"
 
 // NOTE: implementation is inside .h files for easy prototype development. I know i knowwww but this compiles and works. Todo: Move implementation to .cpp and release this library :)
 
 MIDIController controller;
 MIDIOut midiOut;
 
-PeripheralHandle::Button myButton("button", PinAddress::GPIO_13);
-PeripheralHandle::Potentiometer myPot("pot", PinAddress::GPIO_34);
-PeripheralHandle::RotaryEncoder myEnc("enc", PinAddress::GPIO_18, PinAddress::GPIO_19, PinAddress::GPIO_21);
+// Todo: abstract into controldata class
+Peripheral::Button myButton("button", PinAddress::GPIO_13);
+Peripheral::Potentiometer myPot("pot", PinAddress::GPIO_34);
+Peripheral::RotaryEncoder myEnc("enc", PinAddress::GPIO_18, PinAddress::GPIO_19, PinAddress::GPIO_21);
 
-PeripheralHandle::Oled_SSD1306 myDisplay("oled");
+Peripheral::Oled_SSD1306 myDisplay("oled");
 
+Peripheral::LED myledblue("ledblue", PinAddress::GPIO_25);
+Peripheral::LED myledwhite("ledwhite", PinAddress::GPIO_26);
+Peripheral::LED myledgreen("ledgreen", PinAddress::GPIO_27, true);
+
+
+// Testing
 // ComLink_ESPNow comLinkModule(ComRole::Module);
 // ComLink_ESPNow comLinkHub(ComRole::Hub);
 // bool bHub = true;
 
 DisplayData *displayData = new DisplayData;
 
-PeripheralHandle::Multiplexor mux(
+Peripheral::Multiplexor mux(
     "mux",
     PinAddress::GPIO_5,    // S0
     PinAddress::GPIO_18,   // S1
@@ -36,16 +45,16 @@ PeripheralHandle::Multiplexor mux(
 
 int lastValue[16]; // temp for testing
 
-PeripheralHandle::Button buttons[16] = {
-    PeripheralHandle::Button("btn0"),  PeripheralHandle::Button("btn1"),  PeripheralHandle::Button("btn2"),  PeripheralHandle::Button("btn3"),
-    PeripheralHandle::Button("btn4"),  PeripheralHandle::Button("btn5"),  PeripheralHandle::Button("btn6"),  PeripheralHandle::Button("btn7"),
-    PeripheralHandle::Button("btn8"),  PeripheralHandle::Button("btn9"),  PeripheralHandle::Button("btn10"), PeripheralHandle::Button("btn11"),
-    PeripheralHandle::Button("btn12"), PeripheralHandle::Button("btn13"), PeripheralHandle::Button("btn14"), PeripheralHandle::Button("btn15"),
+Peripheral::Button buttons[16] = {
+    Peripheral::Button("btn0"),  Peripheral::Button("btn1"),  Peripheral::Button("btn2"),  Peripheral::Button("btn3"),
+    Peripheral::Button("btn4"),  Peripheral::Button("btn5"),  Peripheral::Button("btn6"),  Peripheral::Button("btn7"),
+    Peripheral::Button("btn8"),  Peripheral::Button("btn9"),  Peripheral::Button("btn10"), Peripheral::Button("btn11"),
+    Peripheral::Button("btn12"), Peripheral::Button("btn13"), Peripheral::Button("btn14"), Peripheral::Button("btn15"),
 };
 
 void setup() {
   Serial.begin(115200);
-  // Wire.begin(21, 22); // SDA, SCL
+  Wire.begin(21, 22); // SDA, SCL
   
   for (uint8_t i = 0; i < 16; i++)
   {
@@ -54,6 +63,16 @@ void setup() {
   }
 
   mux.setup();
+  myledblue.setup();
+  myledwhite.setup();
+  myledgreen.setup();
+
+  myledblue.setBlink(500);
+  myledwhite.setBlink(1000);
+
+  myledgreen.setBlink(10);
+  myledgreen.set(1);
+
 
   // controller.setOutput(midiOut);
 
@@ -67,6 +86,7 @@ void setup() {
   // myDisplay.setDisplay(*displayData);
   // myDisplay.setup();
 
+  // Testing
   // if (bHub)
   // {
   //   comLinkHub.begin();
@@ -80,16 +100,38 @@ void setup() {
 
 void loop() {
 
-  mux.update();
+//   mux.update();
 
-  // Todo: bitmask update to eliminate loop
-  for (uint8_t i = 0; i < 16; i++)
-    {
-        int v = buttons[i].getValue();
-        if (v == LOW && lastValue[i] != LOW)
-            Serial.println(i);
-        lastValue[i] = v;
-    }
+  myledblue.update();
+  myledwhite.update();
+  myledgreen.update();
+
+
+//   uint16_t period = 10;
+//   static uint32_t lastStep = 0;
+//   static uint8_t brightness = 0;
+//   static int8_t direction = 1;
+
+//   if (millis() - lastStep >= period)
+//   {
+//     lastStep = millis();
+
+//     brightness += direction;
+//     if (brightness == 0 || brightness >= 255)
+//       direction = -direction;
+
+//     myledgreen.pwm(brightness);
+//   }
+
+
+//   // Todo: bitmask update to eliminate loop
+//   for (uint8_t i = 0; i < 16; i++)
+//     {
+//         int v = buttons[i].getValue();
+//         if (v == LOW && lastValue[i] != LOW)
+//             Serial.println(i);
+//         lastValue[i] = v;
+//     }
 
   // controller.update();
   // myDisplay.update();
@@ -107,7 +149,7 @@ void loop() {
   // }
 
   // int buttonState = myButton.getValue();
-  // int potValuåe = myPot.getValue();
+  // int potValue = myPot.getValue();
   // int encButtonValue = myEnc.getValueButton();
   // int encPosition = myEnc.getValuePosition();
 
@@ -123,7 +165,7 @@ void loop() {
   //   comLinkModule.update();
   // }
 
-  delay(50);
+//   delay(50);
 }
 
 

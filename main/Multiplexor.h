@@ -3,8 +3,10 @@
 #include "pinout_esp32.h"
 #include "Peripheral.h"
 
-namespace PeripheralHandle
+namespace Peripheral
 {
+    // using Multiplexer = Multiplexor;
+
     class Multiplexor : public PeripheralBase
     {
     public:
@@ -70,7 +72,7 @@ namespace PeripheralHandle
             s1_.writeDigital((ch >> 1) & 0x01);
             s2_.writeDigital((ch >> 2) & 0x01);
             s3_.writeDigital((ch >> 3) & 0x01);
-            
+
             currentCh_ = ch;
         }
 

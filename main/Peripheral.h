@@ -5,9 +5,22 @@
 #include <algorithm>
 #include <Wire.h>
 #include "Display.h"
+#include "LMUtil.h"
 
-namespace PeripheralHandle
+
+namespace Peripheral
 {
+  struct DataState {};
+
+  struct ButtonState : DataState
+  {
+    uint8_t value = 0;
+  };
+
+  struct PotentiometerState : DataState
+  {
+    uint8_t value = 0; // 0 - 127
+  };
 
 using PeripheralID = const char *;
   
@@ -195,15 +208,15 @@ public:
     display_.clearDisplay();
     display_.setTextColor(SSD1306_WHITE);
 
-    display_.setTextSize(1);          // 6x8 px per char -> 4 lines of 21 chars
+    display_.setTextSize(1);
     display_.setCursor(0, 0);
     display_.println("L1A - DEBUG");
 
-    display_.setTextSize(2);          // 12x16 px -> 2 lines of 10 chars
+    display_.setTextSize(2);
     display_.setCursor(0, 12);
     display_.println("CC NaN");
 
-    display_.display();               // nothing appears until you call this
+    display_.display();
   }
 
   void update() override
@@ -250,5 +263,97 @@ private:
   bool stale_ = false;
 };
 
-} // namespace PeripheralHandle
+class LED : public PeripheralBase
+{
+public:
+  explicit LED(PeripheralID id, PinAddress pin)
+    : PeripheralBase(id),
+      pin_(pin, PinMode::Output) {
+        isPWM_ = false;
+      }
+
+  explicit LED(PeripheralID id, PinAddress pin, bool usePWM)
+    : PeripheralBase(id),
+      pin_(pin, usePWM ? PinMode::Default : PinMode::Output) {
+        if (pin_.getMode() == PinMode::Default)
+          isPWM_ = true;
+      }
+
+    void setup() override
+    {
+      pin_.setup();
+    }
+
+    void update() override
+    {
+      if (isBlinking)
+      {
+        if (millis() - lastBlinkTime_ >= blinkPeriod_)
+        {
+          if (isPWM_)
+          {
+            pwmValue_ += fadeDirection_;
+            if (pwmValue_ == 0 || pwmValue_ >= 255)
+              fadeDirection_ = -fadeDirection_;
+          }
+          else
+          {
+            state_ = !state_;
+            if (state_ > 1)
+              state_ = 1;
+          }
+
+          lastBlinkTime_ = millis();
+        }
+      }
+
+      if (isPWM_)
+        pin_.writePWM(state_ ? LMUtil::gamma8(pwmValue_) : 0);
+      else
+        pin_.writeDigital(state_);
+    }
+
+    void set(uint8_t state)
+    {
+      state_ = state;
+      update();
+    }
+
+    void setBlink(uint16_t period)
+    {
+      blinkPeriod_ = period;
+
+      if (blinkPeriod_ == 0)
+      {
+        isBlinking = false;
+        return;
+      }
+
+      isBlinking = true;
+      lastBlinkTime_ = millis();
+    }
+
+    void pwm(uint8_t value)
+    {
+      pwmValue_ = value;
+      update();
+    }
+
+private: 
+  PinHandle pin_;
+
+  bool isBlinking = false;
+
+  // Digital
+  uint8_t state_ = 0;
+  uint16_t blinkPeriod_ = 0;
+  uint32_t lastBlinkTime_ = 0;
+
+  // PWM
+  bool isPWM_ = false;
+  uint8_t pwmValue_ = 0; // 0 - 255
+  int8_t fadeDirection_ = 1; // 1 = up, -1 = down
+};
+
+} // namespace Peripheral
 

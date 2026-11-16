@@ -1,12 +1,5 @@
 #pragma once
 
-enum class PinMode : uint8_t
-{
-  Input         = INPUT,
-  Output        = OUTPUT,
-  InputPullup   = INPUT_PULLUP,
-  InputPulldown = INPUT_PULLDOWN,
-};
 
 enum class PinAddress : uint8_t
 {
