@@ -26,7 +26,7 @@ public:
   virtual void begin() = 0;
   virtual void update() = 0;
   virtual void send(uint8_t type, uint8_t control, uint16_t value) = 0;
-  // virtual void receive() = 0;
+  virtual bool receive(Event &e) = 0;
 
   // void send(uint8_t type, uint8_t control, uint16_t value) {
   //   return send(ControlMsg{type, control, value});
@@ -65,21 +65,22 @@ public:
 
   void update() override
   {
-    if (role == ComRole::Hub && queue)
-    {
-      Event e;
-      while (xQueueReceive(queue, &e, 0)) 
-      {
-        Serial.printf("module ..%02X:%02X  type %u  ctl %u  value %u\n",
-        e.mac[4], e.mac[5], e.msg.type, e.msg.control, e.msg.value);
-      }
-    }
+    // if (role == ComRole::Hub && queue)
+    // {
+    //   Event e;
+    //   while (xQueueReceive(queue, &e, 0)) 
+    //   {
+    //     Serial.printf("module ..%02X:%02X  type %u  ctl %u  value %u\n",
+    //     e.mac[4], e.mac[5], e.msg.type, e.msg.control, e.msg.value);
+    //   }
+    // }
 
-    if (role == ComRole::Module) 
-    {
-      send(10, 11, 12); // example
-      delay(100);
-    }
+    // if (role == ComRole::Module) 
+    // {
+    //   send(10, 11, 12); // example
+    //   delay(100);
+    // }
+    return;
   }
 
   void send(uint8_t type, uint8_t control, uint16_t value) override
@@ -87,6 +88,13 @@ public:
     if (role != ComRole::Module) return;
     ControlMsg msg = {type, control, value};
     esp_now_send(broadcastAddr, (uint8_t*)&msg, sizeof(msg));
+  }
+
+  virtual bool receive(Event &e) override
+  {
+    if (role != ComRole::Hub || !queue) 
+      return false;
+    return xQueueReceive(queue, &e, 0) == pdTRUE; 
   }
 
 private:

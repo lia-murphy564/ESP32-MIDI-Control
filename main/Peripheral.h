@@ -7,7 +7,6 @@
 #include "Display.h"
 #include "LMUtil.h"
 
-
 namespace Peripheral
 {
   struct DataState {};
@@ -63,6 +62,13 @@ public:
     updateInternalData(pin_.readDigital());
   }
 
+  bool changed()
+  {
+    if (value_ == lastSent_) return false;
+    lastSent_ = value_;
+    return true;
+  }
+
   void updateInternalData(auto val)
   {
     value_ = val;  
@@ -105,6 +111,13 @@ public:
     value_ = pin_.readAnalog();
   }
 
+  bool changed()
+  {
+    if (value_ == lastSent_) return false;
+    lastSent_ = value_;
+    return true;
+  }
+
   int getValue() const
   {
     return value_;
@@ -117,7 +130,7 @@ public:
     if (midiValue == lastSent_) return;
     lastSent_ = midiValue;
 
-    midiOut.controlChange(1, 21, midiValue);
+    // midiOut.controlChange(1, 21, midiValue);
   }
 
 private:

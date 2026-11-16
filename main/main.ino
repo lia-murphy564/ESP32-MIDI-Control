@@ -12,27 +12,28 @@
 
 // NOTE: implementation is inside .h files for easy prototype development. I know i knowwww but this compiles and works. Todo: Move implementation to .cpp and release this library :)
 
-MIDIController controller;
-MIDIOut midiOut;
+// MIDIController controller;
+// MIDIOut midiOut;
 
-// Todo: abstract into controldata class
-Peripheral::Button myButton("button", PinAddress::GPIO_13);
-Peripheral::Potentiometer myPot("pot", PinAddress::GPIO_34);
-Peripheral::RotaryEncoder myEnc("enc", PinAddress::GPIO_18, PinAddress::GPIO_19, PinAddress::GPIO_21);
-
+// GLOBAL DEFINES
+bool bHub = true;
 Peripheral::Oled_SSD1306 myDisplay("oled");
+DisplayDebug *displayDebug = new DisplayDebug;
+
+enum ControlID : uint8_t { CTL_BTN1 = 0, CTL_BTN2 = 1, CTL_POT = 2 };
+constexpr uint8_t MSG_CONTROL = 1;   // the "type" field
+
+// HUB DEFINES
+ComLink_ESPNow comLinkHub(ComRole::Hub);
+
+MIDIOut midiOut;
 
 Peripheral::LED myledblue("ledblue", PinAddress::GPIO_25);
 Peripheral::LED myledwhite("ledwhite", PinAddress::GPIO_26);
 Peripheral::LED myledgreen("ledgreen", PinAddress::GPIO_27, true);
 
-
-// Testing
-// ComLink_ESPNow comLinkModule(ComRole::Module);
-// ComLink_ESPNow comLinkHub(ComRole::Hub);
-// bool bHub = true;
-
-DisplayData *displayData = new DisplayData;
+// MODULE DEFINES
+ComLink_ESPNow comLinkModule(ComRole::Module);
 
 Peripheral::Multiplexor mux(
     "mux",
@@ -40,10 +41,8 @@ Peripheral::Multiplexor mux(
     PinAddress::GPIO_18,   // S1
     PinAddress::GPIO_19,   // S2
     PinAddress::GPIO_23,   // S3
-    PinAddress::GPIO_32); 
-
-
-int lastValue[16]; // temp for testing
+    PinAddress::GPIO_32    // SEL
+); 
 
 Peripheral::Button buttons[16] = {
     Peripheral::Button("btn0"),  Peripheral::Button("btn1"),  Peripheral::Button("btn2"),  Peripheral::Button("btn3"),
@@ -52,27 +51,56 @@ Peripheral::Button buttons[16] = {
     Peripheral::Button("btn12"), Peripheral::Button("btn13"), Peripheral::Button("btn14"), Peripheral::Button("btn15"),
 };
 
+Peripheral::Potentiometer myPot("pot", PinAddress::GPIO_34);
+// Peripheral::RotaryEncoder myEnc("enc", PinAddress::GPIO_18, PinAddress::GPIO_19, PinAddress::GPIO_21);
+Peripheral::Button myButton("button", PinAddress::GPIO_13);
+
+
+// Todo: abstract into controldata class
+
+
+
 void setup() {
-  Serial.begin(115200);
-  Wire.begin(21, 22); // SDA, SCL
-  
-  for (uint8_t i = 0; i < 16; i++)
+// Testing
+  if (bHub) // HUB
   {
+    Serial.begin(115200);
+    Wire.begin(21, 22); // SDA, SCL
+
+    myledblue.setup();
+    myledwhite.setup();
+    myledgreen.setup();
+
+    myledblue.setBlink(500);
+    myledwhite.setBlink(1000);
+    myledgreen.setBlink(10);
+    myledgreen.set(1);
+
+    myDisplay.setDisplay(*displayDebug);
+    myDisplay.setup();
+
+    comLinkHub.begin();
+  }
+  else // MODULE
+  {
+    Serial.begin(115200);
+    Wire.begin(21, 22); // SDA, SCL
+
+    myDisplay.setDisplay(*displayDebug);
+    myDisplay.setup();
+
+    for (uint8_t i = 0; i < 16; i++)
+    {
       mux.attach(buttons[i], i);
       // controller.addControl(buttons[i]);
+    }
+
+    myButton.setup();
+    myPot.setup();
+
+    mux.setup();
+    comLinkModule.begin();
   }
-
-  mux.setup();
-  myledblue.setup();
-  myledwhite.setup();
-  myledgreen.setup();
-
-  myledblue.setBlink(500);
-  myledwhite.setBlink(1000);
-
-  myledgreen.setBlink(10);
-  myledgreen.set(1);
-
 
   // controller.setOutput(midiOut);
 
@@ -82,29 +110,85 @@ void setup() {
   // controller.addControl(myEnc, 20); // ControlHandle, cc number
 
   // controller.setup();
-
-  // myDisplay.setDisplay(*displayData);
-  // myDisplay.setup();
-
-  // Testing
-  // if (bHub)
-  // {
-  //   comLinkHub.begin();
-  // }
-  // else
-  // {
-  //   comLinkModule.begin();
-  // }
-  
 }
 
 void loop() {
+// Testing
+  if (bHub) // HUB
+  {
+    static int hubBtn1 = 0, hubBtn2 = 0;
 
-//   mux.update();
+    Event e;
+    
+    while (comLinkHub.receive(e))
+    {
+      switch (e.msg.control)
+      {
+        case CTL_BTN1: 
+            hubBtn1 = e.msg.value;
+            midiOut.controlChange(1, 20, hubBtn1 == LOW ? 127 : 0);
+            break;
+        case CTL_BTN2: 
+            hubBtn2 = e.msg.value;
+            midiOut.controlChange(1, 21, hubBtn2 == LOW ? 127 : 0);
+            break;
+        case CTL_POT:  
+            displayDebug->setPot(e.msg.value);
+            midiOut.controlChange(1, 22, std::clamp(e.msg.value >> 5, 0, 127));
+            break;
+      }
 
-  myledblue.update();
-  myledwhite.update();
-  myledgreen.update();
+      displayDebug->setButtons(hubBtn1, hubBtn2);
+      myDisplay.setDisplay(*displayDebug);
+    }
+
+    comLinkHub.update();
+    
+    myDisplay.update();
+
+    myledblue.update();
+    myledwhite.update();
+    myledgreen.update();
+  }
+  else // MODULE
+  {
+    mux.update();
+
+    myButton.update();
+    myPot.update();
+
+    int buttonState = myButton.getValue();
+    int potValue = myPot.getValue();
+    // int encButtonValue = myEnc.getValueButton();
+    // int encPosition = myEnc.getValuePosition();
+
+    if (myButton.changed())
+      comLinkModule.send(MSG_CONTROL, CTL_BTN1, buttonState);
+
+    if (myPot.changed())
+      comLinkModule.send(MSG_CONTROL, CTL_POT, potValue);
+
+    displayDebug->setButtons(buttonState, 1010);
+    displayDebug->setPot(potValue);
+
+
+    // for (uint8_t i = 0; i < 16; i++)
+    // {
+    //     int v = buttons[i].getValue();
+    //     if (v == LOW && lastValue[i] != LOW)
+    //         displayDebug->setButtons
+    //     lastValue[i] = v;
+    // }
+
+    myDisplay.setDisplay(*displayDebug);
+    myDisplay.update();
+
+    comLinkModule.update();
+  }
+}
+
+
+
 
 
 //   uint16_t period = 10;
@@ -156,17 +240,8 @@ void loop() {
   // Serial.printf("%d %d %d %d\n", encButtonValue, encPosition, potValue, buttonState);
   // controller.sendMidi();
 
-  // if (bHub)
-  // {
-  //   comLinkHub.update();
-  // }
-  // else
-  // {
-  //   comLinkModule.update();
-  // }
-
 //   delay(50);
-}
+
 
 
 
