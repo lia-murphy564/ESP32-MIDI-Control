@@ -71,7 +71,12 @@ public:
 
   void updateInternalData(auto val)
   {
-    value_ = val;  
+    if (!debouncer_.debounce(val == LOW)) return;
+
+    if (true)
+      value_ = debouncer_.stable;
+    else if (debouncer_.stable)
+      value_ = !value_; 
   }
 
   int getValue() const
@@ -93,6 +98,7 @@ private:
   PinHandle pin_;
   int value_ = LOW;
   int lastSent_ = -1;
+  LMUtil::Debouncer debouncer_;
 };
 
 class Potentiometer : public PeripheralBase
@@ -123,6 +129,11 @@ public:
     return value_;
   }
 
+  float getValueSmoothed() const
+  {
+    return smoothed_;
+  }
+
   void send(MIDIOut &midiOut) override
   {
     int midiValue = std::clamp(value_ >> 5, 0, 127);
@@ -136,6 +147,7 @@ public:
 private:
   PinHandle pin_;
   int value_ = 0;
+  float smoothed_ = 0.0f;
   int lastSent_ = -1;
 };
 
@@ -330,6 +342,11 @@ public:
     {
       state_ = state;
       update();
+    }
+
+    void toggle()
+    {
+      state_ = !state_;
     }
 
     void setBlink(uint16_t period)

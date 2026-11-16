@@ -16,7 +16,7 @@
 // MIDIOut midiOut;
 
 // GLOBAL DEFINES
-bool bHub = true;
+bool bHub = false;
 Peripheral::Oled_SSD1306 myDisplay("oled");
 DisplayDebug *displayDebug = new DisplayDebug;
 
@@ -55,6 +55,8 @@ Peripheral::Potentiometer myPot("pot", PinAddress::GPIO_34);
 // Peripheral::RotaryEncoder myEnc("enc", PinAddress::GPIO_18, PinAddress::GPIO_19, PinAddress::GPIO_21);
 Peripheral::Button myButton("button", PinAddress::GPIO_13);
 
+Peripheral::LED ledYellow("ledyellow", PinAddress::GPIO_27);
+
 
 // Todo: abstract into controldata class
 
@@ -66,15 +68,6 @@ void setup() {
   {
     Serial.begin(115200);
     Wire.begin(21, 22); // SDA, SCL
-
-    myledblue.setup();
-    myledwhite.setup();
-    myledgreen.setup();
-
-    myledblue.setBlink(500);
-    myledwhite.setBlink(1000);
-    myledgreen.setBlink(10);
-    myledgreen.set(1);
 
     myDisplay.setDisplay(*displayDebug);
     myDisplay.setup();
@@ -97,6 +90,8 @@ void setup() {
 
     myButton.setup();
     myPot.setup();
+
+    ledYellow.setup();
 
     mux.setup();
     comLinkModule.begin();
@@ -157,13 +152,18 @@ void loop() {
     myButton.update();
     myPot.update();
 
+    ledYellow.update();
+
     int buttonState = myButton.getValue();
     int potValue = myPot.getValue();
     // int encButtonValue = myEnc.getValueButton();
     // int encPosition = myEnc.getValuePosition();
 
-    if (myButton.changed())
+    if (myButton.changed()) 
+    {
       comLinkModule.send(MSG_CONTROL, CTL_BTN1, buttonState);
+      ledYellow.toggle();
+    }
 
     if (myPot.changed())
       comLinkModule.send(MSG_CONTROL, CTL_POT, potValue);

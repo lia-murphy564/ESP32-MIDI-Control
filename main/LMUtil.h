@@ -40,4 +40,22 @@ namespace LMUtil
   constexpr uint8_t gamma8(uint8_t v) {
     return static_cast<uint8_t>((uint32_t(v) * v * v + 32512) / 65025);  // +half for rounding
   }
+
+    // Returns true once, when the input has held a new state for `ms`.
+  struct Debouncer
+  {
+    uint16_t ms = 20;
+    bool raw = false;
+    bool stable = false;
+    uint32_t since = 0;
+
+    bool debounce(bool in)
+    {
+      uint32_t now = millis();
+      if (in != raw) { raw = in; since = now; }     // any change restarts the timer
+      if (in == stable || now - since < ms) return false;
+      stable = in;
+      return true;
+    }
+  };
 }
